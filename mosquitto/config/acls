@@ -1,0 +1,3 @@
+# ACLs are evaluated top-to-bottom
+user mqttuser
+topic readwrite truck/#
