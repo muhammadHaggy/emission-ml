@@ -1,0 +1,100 @@
+services:
+  # === PostGIS Database (used by both IoT + Airflow) ===
+  postgis:
+    image: postgis/postgis:18-3.6
+    container_name: postgis
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: trucks  # main IoT DB; Airflow metadata will share this instance
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgis-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # === MQTT Broker ===
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    container_name: mqtt-broker
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+  # === MQTT Consumer: writes IoT data to PostGIS ===
+  consumer:
+    build: ./consumer
+    container_name: mqtt-consumer
+    depends_on:
+      postgis:
+        condition: service_healthy
+      mqtt:
+        condition: service_started
+    environment:
+      MQTT_BROKER: mqtt
+      MQTT_TOPIC: truck/telemetry
+      PGHOST: postgis
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: trucks
+    restart: unless-stopped
+
+  # === Apache Airflow (uses same PostGIS instance) ===
+  airflow:
+    image: apache/airflow:3.1.0
+    container_name: airflow
+    restart: unless-stopped
+    depends_on:
+      postgis:
+        condition: service_healthy
+    environment:
+      # Use the same PostGIS DB for metadata
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:postgres@postgis/trucks
+
+      # Keep it simple
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.session
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      AIRFLOW_UID: "50000"
+
+      # Create an admin user (works only with FAB)
+      _AIRFLOW_WWW_USER_CREATE: "true"
+      _AIRFLOW_WWW_USER_USERNAME: "airflow"
+      _AIRFLOW_WWW_USER_PASSWORD: "airflow"
+      _AIRFLOW_WWW_USER_EMAIL: "admin@example.com"
+      _AIRFLOW_WWW_USER_FIRSTNAME: "Air"
+      _AIRFLOW_WWW_USER_LASTNAME: "Flow"
+    ports:
+      - "8080:8080"
+    command: >
+      bash -c "
+      airflow db migrate &&
+      airflow users create
+        --username ${_AIRFLOW_WWW_USER_USERNAME}
+        --password ${_AIRFLOW_WWW_USER_PASSWORD}
+        --firstname ${_AIRFLOW_WWW_USER_FIRSTNAME}
+        --lastname ${_AIRFLOW_WWW_USER_LASTNAME}
+        --role Admin
+        --email ${_AIRFLOW_WWW_USER_EMAIL} || true &&
+      airflow scheduler &
+      exec airflow api-server
+      "
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+
+volumes:
+  postgis-data:
+  mosquitto-data:
+  mosquitto-log:
