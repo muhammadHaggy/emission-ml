@@ -60,7 +60,7 @@ def insert_message(payload):
 
 def on_connect(client, userdata, flags, rc):
     print("Connected to MQTT broker:", rc)
-    client.subscribe(MQTT_TOPIC)
+    client.subscribe(MQTT_TOPIC, qos=1)
 
 def on_message(client, userdata, msg):
     try:
