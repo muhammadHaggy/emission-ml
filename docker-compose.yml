@@ -28,7 +28,7 @@ services:
     volumes:
       - mosquitto-data:/mosquitto/data
       - mosquitto-log:/mosquitto/log
-      - ./mosquitto/config:/mosquitto/config:ro
+      - ./mosquitto/config:/mosquitto/config
 
   # === MQTT Consumer: writes IoT data to PostGIS ===
   consumer:
