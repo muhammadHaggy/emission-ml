@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: trucks  # main IoT DB; Airflow metadata will share this instance
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:15432:5432"
     volumes:
       - postgis-data:/var/lib/postgresql
     healthcheck:
@@ -20,7 +20,7 @@ services:
 
   # === MQTT Broker ===
   mqtt:
-    image: eclipse-mosquitto:2.0
+    build: ./mosquitto
     container_name: mqtt-broker
     restart: unless-stopped
     ports:
@@ -28,7 +28,6 @@ services:
     volumes:
       - mosquitto-data:/mosquitto/data
       - mosquitto-log:/mosquitto/log
-      - ./mosquitto/config:/mosquitto/config:ro
 
   # === MQTT Consumer: writes IoT data to PostGIS ===
   consumer:
@@ -75,7 +74,7 @@ services:
       _AIRFLOW_WWW_USER_FIRSTNAME: "Air"
       _AIRFLOW_WWW_USER_LASTNAME: "Flow"
     ports:
-      - "8080:8080"
+      - "18080:8080"
     command: >
       bash -c "
       airflow db migrate &&
