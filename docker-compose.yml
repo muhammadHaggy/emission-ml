@@ -23,7 +23,8 @@ services:
     build:
       context: ./mosquitto
       pull: true
-    image: custom-mosquitto:latest
+    image: custom-mosquitto:local
+    pull_policy: never
     container_name: mqtt-broker
     restart: unless-stopped
     ports:
@@ -37,7 +38,8 @@ services:
     build:
       context: ./consumer
       pull: true
-    image: mqtt-consumer:latest
+    image: mqtt-consumer:local
+    pull_policy: never
     container_name: mqtt-consumer
     depends_on:
       postgis:
