@@ -20,15 +20,14 @@ services:
 
   # === MQTT Broker ===
   mqtt:
-    image: eclipse-mosquitto:2.0
+    build: ./mosquitto
     container_name: mqtt-broker
     restart: unless-stopped
     ports:
-      - "11883:1883"
+      - "1883:1883"
     volumes:
       - mosquitto-data:/mosquitto/data
       - mosquitto-log:/mosquitto/log
-      - ./mosquitto/config:/mosquitto/config
 
   # === MQTT Consumer: writes IoT data to PostGIS ===
   consumer:
