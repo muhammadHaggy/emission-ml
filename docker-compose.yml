@@ -20,7 +20,10 @@ services:
 
   # === MQTT Broker ===
   mqtt:
-    build: ./mosquitto
+    build:
+      context: ./mosquitto
+      pull: true
+    image: custom-mosquitto:latest
     container_name: mqtt-broker
     restart: unless-stopped
     ports:
@@ -31,7 +34,10 @@ services:
 
   # === MQTT Consumer: writes IoT data to PostGIS ===
   consumer:
-    build: ./consumer
+    build:
+      context: ./consumer
+      pull: true
+    image: mqtt-consumer:latest
     container_name: mqtt-consumer
     depends_on:
       postgis:
